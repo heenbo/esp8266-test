@@ -73,6 +73,7 @@ LINKFLAGS_eagle.app.v6 = \
 	-lupgrade\
 	-lssl	\
 	-lpwm	\
+	-lhttpclient	\
 	-lsmartconfig \
 	$(DEP_LIBS_eagle.app.v6)					\
 	-Wl,--end-group
