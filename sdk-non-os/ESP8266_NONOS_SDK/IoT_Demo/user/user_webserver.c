@@ -33,8 +33,6 @@
 #include "user_light.h"
 #endif
 
-#include "httpclient.h"
-
 LOCAL struct station_config *sta_conf;
 LOCAL struct softap_config *ap_conf;
 
@@ -1100,13 +1098,6 @@ json_send(void *arg, ParmType ParmType)
 
         case INFOMATION:
             json_ws_send((struct jsontree_value *)&INFOTree, "info", pbuf);
-    		os_printf("SW compile date get 1:%s %s\n",  __DATE__, __TIME__); 
-//		http_get("http://wtfismyip.com/text", "", http_callback_example);
-    		os_printf("SW compile date get 2:%s %s\n",  __DATE__, __TIME__); 
-
-		http_post("http://httpbin.org/post", "first_word=hello&second_word=world", "Content-Type: application/x-www-form-urlencoded\r\n", http_callback_example);
-		
-    		os_printf("SW compile date get 3:%s %s\n",  __DATE__, __TIME__); 
             break;
 
         case WIFI:

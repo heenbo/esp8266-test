@@ -20,8 +20,6 @@
 #include "user_esp_platform.h"
 #endif
 
-#include "httpclient.h"
-
 /******************************************************************************
  * FunctionName : user_rf_cal_sector_set
  * Description  : SDK just reversed 4 sectors, used for rf init data and paramters.
@@ -83,10 +81,6 @@ user_init(void)
 {
     os_printf("SDK version:%s\n", system_get_sdk_version());
 
-    os_printf("SW compile date:%s %s\n",  __DATE__, __TIME__); 
-
-//    http_get("http://wtfismyip.com/text", "", http_callback_example);
-
 #if ESP_PLATFORM
     /*Initialization of the peripheral drivers*/
     /*For light demo , it is user_light_init();*/
@@ -108,6 +102,5 @@ user_init(void)
 #else
     user_webserver_init(SERVER_PORT);
 #endif
-//    http_get("http://wtfismyip.com/text", "", http_callback_example);
 }
 
