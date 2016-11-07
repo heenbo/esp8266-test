@@ -1,3 +1,11 @@
 *.S
 *.dump
 *.out
+*.[oa]
+*.bin
+*.S
+*.dump
+.*
+*~
+*.d
+*.output/
