@@ -4,3 +4,5 @@
 *.S
 *.dump
 *.d
+mkespfsimage
+*.espfs
