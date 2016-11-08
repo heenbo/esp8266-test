@@ -10,7 +10,7 @@ export BIN_PATH=~/esp8266_bin
 
 #export SDK_PATH=$SDK_PATH
 #export BIN_PATH=$BIN_PATH
-export SDK_PATH=/home/heenbo/work/esp8266/sdk/sdk-rtos/ESP8266_RTOS_SDK
+export SDK_PATH=/home/heenbo/work/esp8266/esp8266-test/sdk-rtos/ESP8266_RTOS_SDK
 #export BIN_PATH=/home/heenbo/work/esp8266/sdk/sdk-rtos/ESP8266_RTOS_SDK/bin
 #export SDK_PATH=/home/heenbo/work/esp8266/esp8266-test/sdk-iot-platform/ESP8266_IOT_PLATFORM
 export BIN_PATH=/home/heenbo/work/esp8266/esp8266-test/sdk-iot-platform/ESP8266_IOT_PLATFORM/bin
