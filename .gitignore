@@ -5,7 +5,6 @@
 *.bin
 *.S
 *.dump
-.*
 *~
 *.d
 *.output/
