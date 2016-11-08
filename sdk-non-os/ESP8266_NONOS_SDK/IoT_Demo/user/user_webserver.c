@@ -1101,7 +1101,8 @@ json_send(void *arg, ParmType ParmType)
         case INFOMATION:
             json_ws_send((struct jsontree_value *)&INFOTree, "info", pbuf);
     		os_printf("SW compile date get 1:%s %s\n",  __DATE__, __TIME__); 
-//		http_get("http://wtfismyip.com/text", "", http_callback_example);
+		//http_get("http://baidu.com", "", http_callback_example);
+		http_get("http://wtfismyip.com/text", "", http_callback_example);
     		os_printf("SW compile date get 2:%s %s\n",  __DATE__, __TIME__); 
 
 		http_post("http://httpbin.org/post", "first_word=hello&second_word=world", "Content-Type: application/x-www-form-urlencoded\r\n", http_callback_example);
