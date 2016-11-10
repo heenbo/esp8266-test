@@ -81,6 +81,7 @@ void user_init(void)
     printf("SW version:%s %s\n", __DATE__, __TIME__);
 
     wifi_set_opmode(STATIONAP_MODE);
-    xTaskCreate(gpio_sck_task, "gpio_sck_task", 256, NULL, 2, NULL);
+//    xTaskCreate(gpio_sck_task, "gpio_sck_task", 256, NULL, 2, NULL);
+    xTaskCreate(gpio_sck2_task, "gpio_sck2_task", 258, NULL, 3, NULL);
 }
 
