@@ -3,7 +3,7 @@
  *   > Author: heenbo
  *   > Mail: 379667345@qq.com 
  *   > Created Time:  2016年11月10日 星期四 17时36分35秒
- *   > Modified Time: 2016年11月12日 星期六 13时31分01秒
+ *   > Modified Time: 2016年11月12日 星期六 13时38分50秒
  ************************************************************************/
 
 #include "esp_common.h"
@@ -133,6 +133,16 @@ static void user_gpio_pen_sdio_init(void)
 	printf("LINE:%d\n", __LINE__);
 }
 
+static void default_pen_wifi_config(void)
+{
+	struct station_config * wifi_config = (struct station_config *)zalloc(sizeof(struct station_config));
+	sprintf(wifi_config->ssid, DEFAULT_PEN_AP_SSID);
+	sprintf(wifi_config->password, DEFAULT_PEN_AP_PASSWD);
+	wifi_station_set_config(wifi_config);
+	free(wifi_config);
+	wifi_station_connect();
+}
+
 void gpio_pen_task(void * arg)
 {
 	uint8 gpio_pen_sdio_bit = 0;
@@ -140,6 +150,8 @@ void gpio_pen_task(void * arg)
 	user_gpio_pen_sck_init();
 	user_gpio_pen_sdio_init();
 	printf("task end fun:%s, line:%d\n", __FUNCTION__, __LINE__);
+
+	default_pen_wifi_config();
 
 	uint32 j = 0;
 	while(1)
