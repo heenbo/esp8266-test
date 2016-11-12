@@ -3,7 +3,7 @@
  *   > Author: heenbo
  *   > Mail: 379667345@qq.com 
  *   > Created Time:  2016年11月10日 星期四 17时36分35秒
- *   > Modified Time: 2016年11月12日 星期六 13时38分50秒
+ *   > Modified Time: 2016年11月12日 星期六 13时44分43秒
  ************************************************************************/
 
 #include "esp_common.h"
@@ -25,7 +25,7 @@
 #define SDIO_LEVEL_HIGH (!(SDIO_LEVEL_LOW))
 
 #define DEFAULT_PEN_AP_SSID	"Dlink-fly"
-#define DEFAULT_PEN_AP_PASSWD	"fuxxk1202steal"
+#define DEFAULT_PEN_AP_PASSWD	"aaaaaaaaaa"
 
 static uint8 gpio_pen_sck_level = 0;
 static GPIO_ConfigTypeDef * pGPIOConfig_gpio_pen_sdio = NULL;
