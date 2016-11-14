@@ -3,7 +3,7 @@
  *   > Author: heenbo
  *   > Mail: 379667345@qq.com 
  *   > Created Time:  2016年11月10日 星期四 17时36分35秒
- *   > Modified Time: 2016年11月14日 星期一 10时33分09秒
+ *   > Modified Time: 2016年11月14日 星期一 11时17分39秒
  ************************************************************************/
 
 #include "esp_common.h"
@@ -32,8 +32,9 @@
 //udp client
 #define DEFAULT_SERVER_UDP_PORT 16161
 #define DEFAULT_SERVER_UDP_IP	"192.168.199.235"
-static user_udp_client_init_flag = 0;
-static user_udp_client_code_flag = 0;
+static uint8 user_udp_client_init_flag = 0;
+static uint8 user_udp_client_code_flag = 0;
+static uint8 user_udp_client_uninit_flag = 0;
 static struct espconn ptrespconn;
 
 static int32 sock_fd;
@@ -41,6 +42,7 @@ static struct sockaddr_in server_addr;
 
 static uint8 gpio_pen_sck_level = 0;
 static GPIO_ConfigTypeDef * pGPIOConfig_gpio_pen_sdio = NULL;
+static uint32 gpio_pen_sdio_value = 0;
 
 static void user_udp_client_init(void);
 
@@ -101,7 +103,6 @@ static void user_gpio_pen_sdio_intr_func(void)
 {
 //	printf("a>>>>>>>user_gpio_pen_sdio_intr_func >>>> tmp_i:%d\n", tmp_i);
 	uint32 gpio_status = GPIO_REG_READ(GPIO_STATUS_ADDRESS);
-	uint8 pen_code[20] = {0};
 
 //	printf("b>>>>>>>user_gpio_pen_sdio_intr_func >>>> tmp_i:%d\n", tmp_i);
 	if(gpio_status & BIT(GPIO_PEN_SDIO_IO_NUM))
@@ -111,22 +112,22 @@ static void user_gpio_pen_sdio_intr_func(void)
 		//clear interrupt status
 		GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, gpio_status & BIT(GPIO_PEN_SDIO_IO_NUM));
 
-		uint32 gpio_pen_sdio_value = 0;
 		user_gpio_pen_sdio_intr_func_read(&gpio_pen_sdio_value);
 
 		printf("user_gpio_pen_sdio_intr_func >>>> tmp_i:%d, gpio_pen_sdio_value:0x%x <=> %d\n",
 				tmp_i, gpio_pen_sdio_value, gpio_pen_sdio_value);
 
-		sprintf(pen_code, "pencode: %d\n", gpio_pen_sdio_value);
-		//sendto(sock_fd,(uint8*)pen_code, strlen(pen_code), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
-		if(0x60fff8 == gpio_pen_sdio_value)
+		switch(gpio_pen_sdio_value)
 		{
-		//	user_udp_client_init();
-			user_udp_client_init_flag = 1;
-		}
-		else
-		{
-			user_udp_client_code_flag = 1;
+			case 0x60fff8:
+				user_udp_client_init_flag = 1;
+				break;
+			case 0x60fff7:
+				user_udp_client_uninit_flag = 1;
+				break;
+			default:
+				user_udp_client_code_flag = 1;
+				break;
 		}
 
 		tmp_i++;
@@ -180,11 +181,15 @@ static void user_udp_client_init(void)
 	ptrespconn.proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
 	ptrespconn.proto.udp->remote_port = DEFAULT_SERVER_UDP_PORT;
 	memcpy(ptrespconn.proto.udp->remote_ip, &remote_ip, sizeof(remote_ip));
-//	espconn_regist_recvcb(&ptrespconn, user_devicefind_recv);
-//	espconn_regist_sentcb(&ptrespconn, pen_code_send_cb);
 	espconn_create(&ptrespconn);
 
 	printf("ESP8266 UDP task > user_udp_client_init OK!\n");
+}
+
+static void user_udp_client_uninit(void)
+{
+	espconn_delete(&ptrespconn);
+	printf("ESP8266 UDP task > user_udp_client_uninit OK!\n");
 }
 
 void gpio_pen_task(void * arg)
@@ -194,7 +199,6 @@ void gpio_pen_task(void * arg)
 	int from_len = sizeof(struct sockaddr_in);
 	int ret = 0;
 
-	uint8 gpio_pen_sdio_bit = 0;
 	printf("task start fun:%s, line:%d\n", __FUNCTION__, __LINE__);
 	//pen sck gpio init
 	user_gpio_pen_sck_init();
@@ -204,16 +208,13 @@ void gpio_pen_task(void * arg)
 	//wifi config & connect
 	user_default_pen_wifi_config();
 
-//	user_udp_client_init();
-
 	uint8 udp_msg[50] = "hahahahahah aaa\n\0";
 
 	uint32 j = 0;
 	while(1)
 	{
-//		gpio_pen_sdio_bit = GPIO_INPUT_GET(GPIO_ID_PIN(GPIO_PEN_SDIO_IO_NUM));
-		printf("read gpio_pen_sdio_bit fun:%s, line:%d, gpio_pen_sdio_bit:%d\n",
-				__FUNCTION__, __LINE__, gpio_pen_sdio_bit);
+		printf("read gpio_pen_sdio_bit fun:%s, line:%d, gpio_pen_sdio_value:%d\n",
+				__FUNCTION__, __LINE__, gpio_pen_sdio_value);
 		j = 4000;
 		while(j--)
 		{
@@ -224,12 +225,16 @@ void gpio_pen_task(void * arg)
 				user_udp_client_init();
 			}
 
+			if(1 == user_udp_client_uninit_flag)
+			{
+				user_udp_client_uninit_flag = 0;
+				user_udp_client_uninit();
+			}
+
 			if(1 == user_udp_client_code_flag)
 			{
 				user_udp_client_code_flag = 0;
-				sprintf(udp_msg, "%s\n", "hafdsafsdafsdafsdafesp\n\0");
-				printf("line: %d, user_udp_client_code_flag: %d\n", __LINE__, user_udp_client_code_flag);
-//				ret = sendto(sock_fd, (uint8 *)udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
+				sprintf(udp_msg, "code:%d", gpio_pen_sdio_value);
 				ret = espconn_send(&ptrespconn, udp_msg, strlen(udp_msg));
 				if(0 != ret)
 				{
@@ -242,8 +247,6 @@ void gpio_pen_task(void * arg)
 		}
 
 		sprintf(udp_msg, "%s\n", "hafdsafsdafsdafsdafesp");
-//		recvfrom(sock_fd, (uint8 *)udp_msg, 100, 0,(struct sockaddr *)&from_addr,(socklen_t *)&fromlen);
-		sendto(sock_fd, (uint8 *)udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
 	}
 
 	while(0)
