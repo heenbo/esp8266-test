@@ -3,13 +3,14 @@
  *   > Author: heenbo
  *   > Mail: 379667345@qq.com 
  *   > Created Time:  2016年11月10日 星期四 17时36分35秒
- *   > Modified Time: 2016年11月14日 星期一 09时57分44秒
+ *   > Modified Time: 2016年11月14日 星期一 10时33分09秒
  ************************************************************************/
 
 #include "esp_common.h"
 #include "gpio.h"
 #include "ets_sys.h"
 #include "lwip/sockets.h"
+#include "espconn.h"
 
 #define GPIO_PEN_SCK_IO_MUX	PERIPHS_IO_MUX_GPIO5_U
 #define GPIO_PEN_SCK_IO_NUM	5
@@ -33,6 +34,7 @@
 #define DEFAULT_SERVER_UDP_IP	"192.168.199.235"
 static user_udp_client_init_flag = 0;
 static user_udp_client_code_flag = 0;
+static struct espconn ptrespconn;
 
 static int32 sock_fd;
 static struct sockaddr_in server_addr;
@@ -171,23 +173,18 @@ static void user_default_pen_wifi_config(void)
 
 static void user_udp_client_init(void)
 {
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = INADDR_ANY;
-	server_addr.sin_port = htons(DEFAULT_SERVER_UDP_PORT);
-	server_addr.sin_len = sizeof(DEFAULT_SERVER_UDP_IP);
+	uint32 remote_ip = 0;
 
-	do
-	{
-		sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
-		if (sock_fd == -1)
-		{
-			printf("ESP8266 UDP task > failed to create sock!\n");
-			vTaskDelay(1000/portTICK_RATE_MS);
-		}
-	}while(sock_fd == -1);
+	remote_ip = ipaddr_addr(DEFAULT_SERVER_UDP_IP);
+	ptrespconn.type = ESPCONN_UDP;
+	ptrespconn.proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
+	ptrespconn.proto.udp->remote_port = DEFAULT_SERVER_UDP_PORT;
+	memcpy(ptrespconn.proto.udp->remote_ip, &remote_ip, sizeof(remote_ip));
+//	espconn_regist_recvcb(&ptrespconn, user_devicefind_recv);
+//	espconn_regist_sentcb(&ptrespconn, pen_code_send_cb);
+	espconn_create(&ptrespconn);
 
-	printf("ESP8266 UDP task > socket OK!\n");
+	printf("ESP8266 UDP task > user_udp_client_init OK!\n");
 }
 
 void gpio_pen_task(void * arg)
@@ -232,8 +229,9 @@ void gpio_pen_task(void * arg)
 				user_udp_client_code_flag = 0;
 				sprintf(udp_msg, "%s\n", "hafdsafsdafsdafsdafesp\n\0");
 				printf("line: %d, user_udp_client_code_flag: %d\n", __LINE__, user_udp_client_code_flag);
-				ret = sendto(sock_fd, (uint8 *)udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
-				if(-1 == ret)
+//				ret = sendto(sock_fd, (uint8 *)udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
+				ret = espconn_send(&ptrespconn, udp_msg, strlen(udp_msg));
+				if(0 != ret)
 				{
 					printf("LINE:%d, sendto error: ret = %d\n", __LINE__, ret);
 					perror ("socket ret\n");
