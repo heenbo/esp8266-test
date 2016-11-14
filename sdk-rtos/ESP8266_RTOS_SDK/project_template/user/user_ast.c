@@ -3,12 +3,13 @@
  *   > Author: heenbo
  *   > Mail: 379667345@qq.com 
  *   > Created Time:  2016年11月10日 星期四 17时36分35秒
- *   > Modified Time: 2016年11月12日 星期六 13时44分43秒
+ *   > Modified Time: 2016年11月14日 星期一 09时57分44秒
  ************************************************************************/
 
 #include "esp_common.h"
 #include "gpio.h"
 #include "ets_sys.h"
+#include "lwip/sockets.h"
 
 #define GPIO_PEN_SCK_IO_MUX	PERIPHS_IO_MUX_GPIO5_U
 #define GPIO_PEN_SCK_IO_NUM	5
@@ -25,10 +26,21 @@
 #define SDIO_LEVEL_HIGH (!(SDIO_LEVEL_LOW))
 
 #define DEFAULT_PEN_AP_SSID	"Dlink-fly"
-#define DEFAULT_PEN_AP_PASSWD	"aaaaaaaaaa"
+#define DEFAULT_PEN_AP_PASSWD	"fuxxk1202steal"
+
+//udp client
+#define DEFAULT_SERVER_UDP_PORT 16161
+#define DEFAULT_SERVER_UDP_IP	"192.168.199.235"
+static user_udp_client_init_flag = 0;
+static user_udp_client_code_flag = 0;
+
+static int32 sock_fd;
+static struct sockaddr_in server_addr;
 
 static uint8 gpio_pen_sck_level = 0;
 static GPIO_ConfigTypeDef * pGPIOConfig_gpio_pen_sdio = NULL;
+
+static void user_udp_client_init(void);
 
 static void user_gpio_pen_sck_init(void)
 {
@@ -73,7 +85,7 @@ static void user_gpio_pen_sdio_intr_func_read(uint32 * gpio_pen_sdio_data)
 		os_delay_us(10);				//delay 10 us
 
 		i++;
-		printf("read sdio_data fun:%s, line:%d, sdio_data:%d\n", __FUNCTION__, __LINE__, (sdio_data&0x01));
+		//printf("read sdio_data fun:%s, line:%d, sdio_data:%d\n", __FUNCTION__, __LINE__, (sdio_data&0x01));
 	}
 	*gpio_pen_sdio_data = sdio_data;
 	user_gpio_pen_set_sdio(SDIO_LEVEL_HIGH);	//write gpio high
@@ -85,10 +97,11 @@ static void user_gpio_pen_sdio_intr_func_read(uint32 * gpio_pen_sdio_data)
 int tmp_i = 0;
 static void user_gpio_pen_sdio_intr_func(void)
 {
-	printf("a>>>>>>>user_gpio_pen_sdio_intr_func >>>> tmp_i:%d\n", tmp_i);
+//	printf("a>>>>>>>user_gpio_pen_sdio_intr_func >>>> tmp_i:%d\n", tmp_i);
 	uint32 gpio_status = GPIO_REG_READ(GPIO_STATUS_ADDRESS);
+	uint8 pen_code[20] = {0};
 
-	printf("b>>>>>>>user_gpio_pen_sdio_intr_func >>>> tmp_i:%d\n", tmp_i);
+//	printf("b>>>>>>>user_gpio_pen_sdio_intr_func >>>> tmp_i:%d\n", tmp_i);
 	if(gpio_status & BIT(GPIO_PEN_SDIO_IO_NUM))
 	{
 		//disable this gpio pin interrupt
@@ -101,6 +114,19 @@ static void user_gpio_pen_sdio_intr_func(void)
 
 		printf("user_gpio_pen_sdio_intr_func >>>> tmp_i:%d, gpio_pen_sdio_value:0x%x <=> %d\n",
 				tmp_i, gpio_pen_sdio_value, gpio_pen_sdio_value);
+
+		sprintf(pen_code, "pencode: %d\n", gpio_pen_sdio_value);
+		//sendto(sock_fd,(uint8*)pen_code, strlen(pen_code), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
+		if(0x60fff8 == gpio_pen_sdio_value)
+		{
+		//	user_udp_client_init();
+			user_udp_client_init_flag = 1;
+		}
+		else
+		{
+			user_udp_client_code_flag = 1;
+		}
+
 		tmp_i++;
 		//enable this gpio pin interrupt
 		gpio_pin_intr_state_set(GPIO_ID_PIN(GPIO_PEN_SDIO_IO_NUM), GPIO_PIN_INTR_LOLEVEL);
@@ -133,7 +159,7 @@ static void user_gpio_pen_sdio_init(void)
 	printf("LINE:%d\n", __LINE__);
 }
 
-static void default_pen_wifi_config(void)
+static void user_default_pen_wifi_config(void)
 {
 	struct station_config * wifi_config = (struct station_config *)zalloc(sizeof(struct station_config));
 	sprintf(wifi_config->ssid, DEFAULT_PEN_AP_SSID);
@@ -143,15 +169,47 @@ static void default_pen_wifi_config(void)
 	wifi_station_connect();
 }
 
+static void user_udp_client_init(void)
+{
+	memset(&server_addr, 0, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = INADDR_ANY;
+	server_addr.sin_port = htons(DEFAULT_SERVER_UDP_PORT);
+	server_addr.sin_len = sizeof(DEFAULT_SERVER_UDP_IP);
+
+	do
+	{
+		sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+		if (sock_fd == -1)
+		{
+			printf("ESP8266 UDP task > failed to create sock!\n");
+			vTaskDelay(1000/portTICK_RATE_MS);
+		}
+	}while(sock_fd == -1);
+
+	printf("ESP8266 UDP task > socket OK!\n");
+}
+
 void gpio_pen_task(void * arg)
 {
+	struct sockaddr_in from_addr;
+	memset(&from_addr, 0, sizeof(from_addr));
+	int from_len = sizeof(struct sockaddr_in);
+	int ret = 0;
+
 	uint8 gpio_pen_sdio_bit = 0;
 	printf("task start fun:%s, line:%d\n", __FUNCTION__, __LINE__);
+	//pen sck gpio init
 	user_gpio_pen_sck_init();
+	//pen sdio gpio init
 	user_gpio_pen_sdio_init();
-	printf("task end fun:%s, line:%d\n", __FUNCTION__, __LINE__);
 
-	default_pen_wifi_config();
+	//wifi config & connect
+	user_default_pen_wifi_config();
+
+//	user_udp_client_init();
+
+	uint8 udp_msg[50] = "hahahahahah aaa\n\0";
 
 	uint32 j = 0;
 	while(1)
@@ -159,12 +217,35 @@ void gpio_pen_task(void * arg)
 //		gpio_pen_sdio_bit = GPIO_INPUT_GET(GPIO_ID_PIN(GPIO_PEN_SDIO_IO_NUM));
 		printf("read gpio_pen_sdio_bit fun:%s, line:%d, gpio_pen_sdio_bit:%d\n",
 				__FUNCTION__, __LINE__, gpio_pen_sdio_bit);
-		j = 5000;
+		j = 4000;
 		while(j--)
 		{
+			
+			if(1 == user_udp_client_init_flag)
+			{
+				user_udp_client_init_flag = 0;
+				user_udp_client_init();
+			}
+
+			if(1 == user_udp_client_code_flag)
+			{
+				user_udp_client_code_flag = 0;
+				sprintf(udp_msg, "%s\n", "hafdsafsdafsdafsdafesp\n\0");
+				printf("line: %d, user_udp_client_code_flag: %d\n", __LINE__, user_udp_client_code_flag);
+				ret = sendto(sock_fd, (uint8 *)udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
+				if(-1 == ret)
+				{
+					printf("LINE:%d, sendto error: ret = %d\n", __LINE__, ret);
+					perror ("socket ret\n");
+				}
+
+			}
 			os_delay_us(1000);
 		}
-		
+
+		sprintf(udp_msg, "%s\n", "hafdsafsdafsdafsdafesp");
+//		recvfrom(sock_fd, (uint8 *)udp_msg, 100, 0,(struct sockaddr *)&from_addr,(socklen_t *)&fromlen);
+		sendto(sock_fd, (uint8 *)udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&server_addr, sizeof(struct sockaddr_in));
 	}
 
 	while(0)
@@ -173,4 +254,7 @@ void gpio_pen_task(void * arg)
     		GPIO_OUTPUT_SET(GPIO_ID_PIN(GPIO_PEN_SCK_IO_NUM), gpio_pen_sck_level);
 		os_delay_us(20);
 	}
+	printf("task end fun:%s, line:%d\n", __FUNCTION__, __LINE__);
+	//task free
+	vTaskDelete(NULL);
 }
