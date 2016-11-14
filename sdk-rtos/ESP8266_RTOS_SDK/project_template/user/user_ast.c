@@ -3,7 +3,7 @@
  *   > Author: heenbo
  *   > Mail: 379667345@qq.com 
  *   > Created Time:  2016年11月10日 星期四 17时36分35秒
- *   > Modified Time: 2016年11月14日 星期一 11时17分39秒
+ *   > Modified Time: 2016年11月14日 星期一 14时43分47秒
  ************************************************************************/
 
 #include "esp_common.h"
@@ -213,9 +213,9 @@ void gpio_pen_task(void * arg)
 	uint32 j = 0;
 	while(1)
 	{
-		printf("read gpio_pen_sdio_bit fun:%s, line:%d, gpio_pen_sdio_value:%d\n",
-				__FUNCTION__, __LINE__, gpio_pen_sdio_value);
-		j = 4000;
+		printf("read gpio_pen_sdio_bit fun:%s, line:%d >>>>>>>>>>>>>>>>\n",
+				__FUNCTION__, __LINE__);
+		j = 5000;
 		while(j--)
 		{
 			
@@ -235,7 +235,8 @@ void gpio_pen_task(void * arg)
 			{
 				user_udp_client_code_flag = 0;
 				sprintf(udp_msg, "code:%d", gpio_pen_sdio_value);
-				ret = espconn_send(&ptrespconn, udp_msg, strlen(udp_msg));
+				//ret = espconn_send(&ptrespconn, udp_msg, strlen(udp_msg));
+				ret = espconn_sendto(&ptrespconn, udp_msg, strlen(udp_msg));
 				if(0 != ret)
 				{
 					printf("LINE:%d, sendto error: ret = %d\n", __LINE__, ret);
