@@ -3,14 +3,15 @@
  *   > Author: heenbo
  *   > Mail: 379667345@qq.com 
  *   > Created Time:  2016年11月10日 星期四 17时36分35秒
- *   > Modified Time: 2016年11月14日 星期一 14时43分47秒
+ *   > Modified Time: 2016年11月14日 星期一 21时00分22秒
  ************************************************************************/
 
 #include "esp_common.h"
+
 #include "gpio.h"
 #include "ets_sys.h"
 #include "lwip/sockets.h"
-#include "espconn.h"
+#include "espressif/espconn.h"
 
 #define GPIO_PEN_SCK_IO_MUX	PERIPHS_IO_MUX_GPIO5_U
 #define GPIO_PEN_SCK_IO_NUM	5
@@ -30,11 +31,14 @@
 #define DEFAULT_PEN_AP_PASSWD	"fuxxk1202steal"
 
 //udp client
-#define DEFAULT_SERVER_UDP_PORT 16161
-#define DEFAULT_SERVER_UDP_IP	"192.168.199.235"
+#define DEFAULT_SERVER_UDP_PORT 12121
+#define DEFAULT_SERVER_UDP_IP	"255.255.255.255"
+//#define DEFAULT_SERVER_UDP_IP	"192.168.199.235"
 static uint8 user_udp_client_init_flag = 0;
 static uint8 user_udp_client_code_flag = 0;
 static uint8 user_udp_client_uninit_flag = 0;
+static esp_udp remote_udp;
+static uint32 remote_ip = 0;
 static struct espconn ptrespconn;
 
 static int32 sock_fd;
@@ -89,7 +93,6 @@ static void user_gpio_pen_sdio_intr_func_read(uint32 * gpio_pen_sdio_data)
 		os_delay_us(10);				//delay 10 us
 
 		i++;
-		//printf("read sdio_data fun:%s, line:%d, sdio_data:%d\n", __FUNCTION__, __LINE__, (sdio_data&0x01));
 	}
 	*gpio_pen_sdio_data = sdio_data;
 	user_gpio_pen_set_sdio(SDIO_LEVEL_HIGH);	//write gpio high
@@ -174,13 +177,13 @@ static void user_default_pen_wifi_config(void)
 
 static void user_udp_client_init(void)
 {
-	uint32 remote_ip = 0;
-
-	remote_ip = ipaddr_addr(DEFAULT_SERVER_UDP_IP);
 	ptrespconn.type = ESPCONN_UDP;
-	ptrespconn.proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
-	ptrespconn.proto.udp->remote_port = DEFAULT_SERVER_UDP_PORT;
-	memcpy(ptrespconn.proto.udp->remote_ip, &remote_ip, sizeof(remote_ip));
+	remote_udp.remote_port= DEFAULT_SERVER_UDP_PORT;
+	remote_udp.remote_ip[0] = 255;
+	remote_udp.remote_ip[1] = 255;
+	remote_udp.remote_ip[2] = 255;
+	remote_udp.remote_ip[3] = 255;
+	ptrespconn.proto.udp = &(remote_udp);
 	espconn_create(&ptrespconn);
 
 	printf("ESP8266 UDP task > user_udp_client_init OK!\n");
@@ -235,12 +238,34 @@ void gpio_pen_task(void * arg)
 			{
 				user_udp_client_code_flag = 0;
 				sprintf(udp_msg, "code:%d", gpio_pen_sdio_value);
-				//ret = espconn_send(&ptrespconn, udp_msg, strlen(udp_msg));
+				ptrespconn.type = ESPCONN_UDP;
+				remote_udp.remote_port= DEFAULT_SERVER_UDP_PORT;
+				remote_udp.remote_ip[0] = 255;
+				remote_udp.remote_ip[1] = 255;
+				remote_udp.remote_ip[2] = 255;
+				remote_udp.remote_ip[3] = 255;
+				//printf("send udp if i is:%d\n", wifi_get_broadcast_if());
+				printf("ip:%u, port:%u, type:0x%x\n", ptrespconn.proto.udp->remote_ip, 
+						ptrespconn.proto.udp->remote_port, ptrespconn.type);
+				printf("ip[0]:%d", (ptrespconn.proto.udp->remote_ip[0])&0xff);
+				printf("ip[1]:%d", (ptrespconn.proto.udp->remote_ip[1])&0xff);
+				printf("ip[2]:%d", (ptrespconn.proto.udp->remote_ip[2])&0xff);
+				printf("ip[3]:%d\n", (ptrespconn.proto.udp->remote_ip[3])&0xff);
 				ret = espconn_sendto(&ptrespconn, udp_msg, strlen(udp_msg));
+				printf("ip:%u, port:%u, type:0x%x\n", ptrespconn.proto.udp->remote_ip, 
+						ptrespconn.proto.udp->remote_port, ptrespconn.type);
+				printf("ip[0]:%d", (ptrespconn.proto.udp->remote_ip[0])&0xff);
+				printf("ip[1]:%d", (ptrespconn.proto.udp->remote_ip[1])&0xff);
+				printf("ip[2]:%d", (ptrespconn.proto.udp->remote_ip[2])&0xff);
+				printf("ip[3]:%d\n", (ptrespconn.proto.udp->remote_ip[3])&0xff);
 				if(0 != ret)
 				{
 					printf("LINE:%d, sendto error: ret = %d\n", __LINE__, ret);
 					perror ("socket ret\n");
+				}
+				else
+				{
+					printf("LINE:%d, sendto success, udp_msg:%s, len:%d", __LINE__, udp_msg, strlen(udp_msg));
 				}
 
 			}
